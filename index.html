@@ -49,6 +49,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
 .field-row .field{flex:1}
 .btn-primary{width:100%;padding:14px;background:var(--gold);color:var(--bg);border:none;border-radius:10px;font-family:'Outfit',sans-serif;font-size:14px;font-weight:600;cursor:pointer;margin-top:10px;letter-spacing:1px;text-transform:uppercase}
 .btn-primary:active{opacity:.85}
+.btn-primary:disabled{opacity:.5;cursor:default}
 .btn-secondary{width:100%;padding:12px;background:none;color:var(--text2);border:1px solid var(--border);border-radius:10px;font-family:'Outfit',sans-serif;font-size:13px;font-weight:400;cursor:pointer;margin-top:8px}
 .search-bar{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:14px}
 .search-bar input{flex:1;background:none;border:none;color:var(--text);font-size:14px;outline:none;font-family:'Outfit',sans-serif;font-weight:300}
@@ -94,6 +95,16 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
 .month-btn:active{border-color:var(--gold-dim);color:var(--gold)}
 .month-label{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;color:var(--text);min-width:140px;text-align:center}
 .price{font-variant-numeric:tabular-nums}
+.auth-screen{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-content:center;background:var(--bg);padding:20px}
+.auth-card{width:100%;max-width:360px;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:32px 24px}
+.auth-title{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:600;color:var(--gold);text-align:center;margin-bottom:4px}
+.auth-sub{font-size:10px;color:var(--text3);text-align:center;letter-spacing:3px;text-transform:uppercase;margin-bottom:28px}
+.auth-error{font-size:12px;color:var(--red);background:rgba(201,76,76,.08);border:1px solid rgba(201,76,76,.15);border-radius:8px;padding:8px 12px;margin-bottom:14px;font-weight:300}
+.auth-toggle{text-align:center;margin-top:14px;font-size:12px;color:var(--text3);font-weight:300}
+.auth-toggle b{color:var(--gold);cursor:pointer;font-weight:400}
+.btn-logout{background:none;border:none;color:var(--text3);cursor:pointer;font-size:11px;font-family:'Outfit',sans-serif;padding:3px 8px;border-radius:6px;letter-spacing:.5px;margin-left:auto;flex-shrink:0}
+.btn-logout:active{color:var(--red)}
+.loading-screen{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-content:center;background:var(--bg);color:var(--text3);font-size:11px;font-weight:300;letter-spacing:3px;text-transform:uppercase}
 </style>
 </head>
 <body>
@@ -101,13 +112,30 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script type="text/babel">
-const {useState,useMemo}=React;
+const {useState,useMemo,useEffect}=React;
 const h=React.createElement;
 const F=React.Fragment;
-const SK="barbearia-data";
-const DD={produtos:[],clientes:[],contas:[],atendimentos:[]};
-function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
+
+const SUPA_URL="https://zugznhhtdrttsrzzvgsy.supabase.co";
+const SUPA_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp1Z3puaGh0ZHJ0dHNyenp2Z3N5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwNTU2NjIsImV4cCI6MjA5NjYzMTY2Mn0.roDxF-vh9Ue8xI-GNxjdclIRVoFAOyx7fP73WIjos9Q";
+const sb=supabase.createClient(SUPA_URL,SUPA_KEY);
+
+// ── Row converters ──
+function rowToProd(r){return{id:r.id,nome:r.nome||"",fornecedor:r.fornecedor||"",marca:r.marca||"",categoria:r.categoria||"",precoCusto:r.preco_custo||0,precoVenda:r.preco_venda||0,estoque:r.estoque!=null?r.estoque:null,telFornecedor:r.tel_fornecedor||""}}
+function prodToRow(p){return{nome:p.nome,fornecedor:p.fornecedor||null,marca:p.marca||null,categoria:p.categoria||null,preco_custo:p.precoCusto||0,preco_venda:p.precoVenda||0,estoque:p.estoque!==""&&p.estoque!=null?Number(p.estoque):null,tel_fornecedor:p.telFornecedor||null}}
+function rowToCliente(r){return{id:r.id,nome:r.nome||"",telefone:r.telefone||"",notas:r.notas||""}}
+function clienteToRow(c){return{nome:c.nome,telefone:c.telefone||null,notas:c.notas||null}}
+function rowToConta(r){return{id:r.id,descricao:r.descricao||"",tipo:r.tipo||"fixa",valor:r.valor||0,categoria:r.categoria||"",vencimento:r.vencimento||""}}
+function contaToRow(c){return{descricao:c.descricao,tipo:c.tipo,valor:c.valor||0,categoria:c.categoria||null,vencimento:c.vencimento||null}}
+function rowToAtd(r){return{id:r.id,clienteId:r.cliente_id,data:r.data,horario:r.horario||"",valor:r.valor||0,servicos:r.servicos||[],produtos:r.produtos||[],obs:r.obs||""}}
+function atdToRow(a){return{cliente_id:a.clienteId,data:a.data,horario:a.horario||null,valor:a.valor||0,servicos:a.servicos||[],produtos:a.produtos||[],obs:a.obs||null}}
+
+const FROM_ROW={produtos:rowToProd,clientes:rowToCliente,contas:rowToConta,atendimentos:rowToAtd};
+const TO_ROW={produtos:prodToRow,clientes:clienteToRow,contas:contaToRow,atendimentos:atdToRow};
+
+// ── Utilities ──
 function money(v){return"R$ "+Number(v||0).toFixed(2).replace(".",",").replace(/\B(?=(\d{3})+(?!\d))/g,".")}
 function fmtPhone(v){
   var d=(v||"").replace(/\D/g,"");
@@ -125,12 +153,10 @@ function fmtMoney(v){
 function dateStr(d){if(!d)return"";var p=d.split("-");return p[2]+"/"+p[1]+"/"+p[0]}
 function today(){return new Date().toISOString().slice(0,10)}
 function daysUntil(ds){if(!ds)return Infinity;var t=new Date();t.setHours(0,0,0,0);var d=new Date(ds+"T00:00:00");d.setHours(0,0,0,0);return Math.ceil((d-t)/86400000)}
-function loadData(){try{var d=localStorage.getItem(SK);if(!d)return DD;var p=JSON.parse(d);return{produtos:Array.isArray(p.produtos)?p.produtos:[],clientes:Array.isArray(p.clientes)?p.clientes:[],contas:Array.isArray(p.contas)?p.contas:[],atendimentos:Array.isArray(p.atendimentos)?p.atendimentos:[]}}catch(e){return DD}}
-function saveData(d){try{localStorage.setItem(SK,JSON.stringify(d))}catch(e){}}
 
 const MESES=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 
-// SVG icons
+// ── SVG icons ──
 function icon(paths,w){w=w||20;return h("svg",{width:w,height:w,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:"1.8",strokeLinecap:"round",strokeLinejoin:"round"},paths.map(function(p,i){
   if(p.t==="c")return h("circle",{key:i,cx:p.cx,cy:p.cy,r:p.r});
   if(p.t==="l")return h("line",{key:i,x1:p.x1,y1:p.y1,x2:p.x2,y2:p.y2});
@@ -159,14 +185,12 @@ var I={
 function SearchBar({value,onChange,placeholder}){return h("div",{className:"search-bar"},I.search,h("input",{value:value,onChange:function(e){onChange(e.target.value)},placeholder:placeholder}))}
 function Empty({icon:ic,text}){return h("div",{className:"empty"},h("div",{style:{transform:"scale(2)",marginBottom:16}},ic),h("p",null,text))}
 
-// Phone input with mask
 function PhoneInput({value,onChange,label,placeholder}){
   return h("div",{className:"field"},
     h("label",null,label||"Telefone"),
     h("input",{value:fmtPhone(value),onChange:function(e){onChange(e.target.value.replace(/\D/g,""))},placeholder:placeholder||"(19) 99999-9999",type:"tel",inputMode:"numeric"})
   );
 }
-// Money input with mask
 function MoneyInput({value,onChange,label}){
   var cents=Math.round((value||0)*100);
   var display=cents>0?("R$ "+fmtMoney(String(cents))):"";
@@ -179,7 +203,6 @@ function MoneyInput({value,onChange,label}){
   );
 }
 
-// Month filter
 function MonthFilter({month,setMonth}){
   var prev=function(){var m=month.m===0?11:month.m-1;var y=month.m===0?month.y-1:month.y;setMonth({m:m,y:y})};
   var next=function(){var m=month.m===11?0:month.m+1;var y=month.m===11?month.y+1:month.y;setMonth({m:m,y:y})};
@@ -187,6 +210,43 @@ function MonthFilter({month,setMonth}){
     h("button",{className:"month-btn",onClick:prev},I.chevL),
     h("span",{className:"month-label"},MESES[month.m]+" "+month.y),
     h("button",{className:"month-btn",onClick:next},I.chevR)
+  );
+}
+
+// ── LOGIN ──
+function LoginScreen(){
+  var [email,setEmail]=useState("");
+  var [senha,setSenha]=useState("");
+  var [isSignUp,setIsSignUp]=useState(false);
+  var [err,setErr]=useState("");
+  var [loading,setLoading]=useState(false);
+  async function submit(e){
+    e.preventDefault();
+    if(!email||!senha)return;
+    setLoading(true);setErr("");
+    var res=isSignUp
+      ?await sb.auth.signUp({email:email,password:senha})
+      :await sb.auth.signInWithPassword({email:email,password:senha});
+    setLoading(false);
+    if(res.error){setErr(res.error.message);return;}
+    if(isSignUp&&!res.data.session)setErr("Confirme seu e-mail para ativar a conta.");
+  }
+  return h("div",{className:"auth-screen"},
+    h("div",{className:"auth-card"},
+      h("div",{style:{textAlign:"center",color:"var(--gold)",marginBottom:12}},I.scissors),
+      h("div",{className:"auth-title"},"Barbearia Tradicional"),
+      h("div",{className:"auth-sub"},isSignUp?"Criar conta":"Acesso restrito"),
+      err&&h("div",{className:"auth-error"},err),
+      h("form",{onSubmit:submit},
+        h("div",{className:"field"},h("label",null,"E-mail"),h("input",{type:"email",value:email,onChange:function(e){setEmail(e.target.value)},placeholder:"seu@email.com",autoComplete:"email"})),
+        h("div",{className:"field"},h("label",null,"Senha"),h("input",{type:"password",value:senha,onChange:function(e){setSenha(e.target.value)},placeholder:"••••••••",autoComplete:isSignUp?"new-password":"current-password"})),
+        h("button",{type:"submit",className:"btn-primary",disabled:loading},loading?"Aguarde...":(isSignUp?"Criar Conta":"Entrar"))
+      ),
+      h("div",{className:"auth-toggle"},
+        isSignUp?"Já tem conta? ":"Não tem conta? ",
+        h("b",{onClick:function(){setIsSignUp(!isSignUp);setErr("")}},isSignUp?"Entrar":"Criar conta")
+      )
+    )
   );
 }
 
@@ -199,7 +259,7 @@ function ProdutosTab({data,search,setSearch,setForm,deleteItem}){
     fornecedores.length>0&&h("div",{className:"tag-row",style:{marginBottom:14}},fornecedores.map(function(f){return h("span",{key:f,className:"chip",onClick:function(){setSearch(search===f?"":f)}},f)})),
     filtered.length===0?h(Empty,{icon:I.box,text:"Nenhum produto cadastrado"}):filtered.map(function(p){return h("div",{className:"card",key:p.id},
       h("div",{className:"card-row"},
-        h("div",null,h("div",{className:"card-title"},p.nome),h("div",{className:"card-sub"},p.fornecedor,p.marca?" · "+p.marca:"",p.telFornecedor?" · "+fmtPhone(p.telFornecedor):"")),
+        h("div",null,h("div",{className:"card-title"},p.nome),h("div",{className:"card-sub"},p.fornecedor,p.marca?" · "+p.marca:"",p.telFornecedor&&" · ",p.telFornecedor&&h("a",{href:"https://wa.me/55"+p.telFornecedor.replace(/\D/g,""),target:"_blank",style:{color:"var(--text2)",textDecoration:"none"}},fmtPhone(p.telFornecedor)))),
         h("div",{style:{textAlign:"right"}},h("div",{className:"card-badge badge-gold price"},money(p.precoVenda)),p.precoCusto>0&&h("div",{className:"price",style:{fontSize:11,color:"var(--text3)",marginTop:4}},"Custo: "+money(p.precoCusto)))
       ),
       p.estoque!=null&&h("div",{style:{fontSize:12,color:p.estoque<=3?"var(--red)":"var(--text3)",marginTop:8,fontWeight:300}},"Estoque: "+p.estoque+" un."),
@@ -222,7 +282,7 @@ function ClientesTab({data,search,setSearch,setForm,setDetail,deleteItem}){
       var total=atds.reduce(function(s,a){return s+(a.valor||0)},0);
       return h("div",{className:"card clickable",key:c.id,onClick:function(){setDetail({type:"cliente",id:c.id})}},
         h("div",{className:"card-row"},
-          h("div",null,h("div",{className:"card-title"},c.nome),c.telefone&&h("div",{className:"card-sub",style:{display:"flex",alignItems:"center",gap:5}},I.phone," ",fmtPhone(c.telefone))),
+          h("div",null,h("div",{className:"card-title"},c.nome),c.telefone&&h("div",{className:"card-sub",style:{display:"flex",alignItems:"center",gap:5}},I.phone," ",h("a",{href:"https://wa.me/55"+(c.telefone||"").replace(/\D/g,""),target:"_blank",style:{color:"inherit",textDecoration:"none"}},fmtPhone(c.telefone)))),
           h("div",{style:{textAlign:"right"}},h("div",{className:"card-badge badge-green"},atds.length+" visitas"),total>0&&h("div",{className:"price",style:{fontSize:11,color:"var(--text3)",marginTop:4}},"Total: "+money(total)))
         ),
         c.notas&&h("div",{style:{fontSize:12,color:"var(--text3)",marginTop:8,fontWeight:300}},c.notas),
@@ -286,35 +346,57 @@ function ContasTab({data,search,setSearch,setForm,deleteItem}){
 function InsightsTab({data,setDetail,setTab}){
   var now=new Date();
   var [month,setMonth]=useState({m:now.getMonth(),y:now.getFullYear()});
+  var [diasSemVisita,setDiasSemVisita]=useState(30);
+  var hoje=new Date();hoje.setHours(0,0,0,0);
+  var clientesInativos=data.clientes.map(function(c){
+    var atdsCli=data.atendimentos.filter(function(a){return a.clienteId===c.id&&a.data});
+    if(atdsCli.length===0)return{cliente:c,dias:null};
+    var ultima=atdsCli.slice().sort(function(a,b){return b.data.localeCompare(a.data)})[0].data;
+    var d=new Date(ultima+"T00:00:00");d.setHours(0,0,0,0);
+    return{cliente:c,dias:Math.floor((hoje-d)/86400000)};
+  }).filter(function(x){return x.dias===null||x.dias>=diasSemVisita}).sort(function(a,b){return(b.dias===null?999999:b.dias)-(a.dias===null?999999:a.dias)});
   var ym=String(month.y)+"-"+(month.m<9?"0":"")+(month.m+1);
   var atdsMes=data.atendimentos.filter(function(a){return a.data&&a.data.slice(0,7)===ym});
   var receitaMes=atdsMes.reduce(function(s,a){return s+(a.valor||0)},0);
-
-  // Receita por dia do mês
   var dailyRev={};
   atdsMes.forEach(function(a){var d=parseInt(a.data.slice(8,10),10);dailyRev[d]=(dailyRev[d]||0)+(a.valor||0)});
   var days=Object.entries(dailyRev).sort(function(a,b){return parseInt(a[0])-parseInt(b[0])});
   var maxDay=Math.max.apply(null,days.map(function(d){return d[1]}).concat([1]));
-
-  // Top clientes do mês
   var clienteGasto={};
   atdsMes.forEach(function(a){clienteGasto[a.clienteId]=(clienteGasto[a.clienteId]||0)+(a.valor||0)});
   var topClientes=Object.entries(clienteGasto).sort(function(a,b){return b[1]-a[1]}).slice(0,5).map(function(e){var c=data.clientes.find(function(x){return x.id===e[0]});return{id:e[0],nome:c?c.nome:"—",gasto:e[1]}});
   var maxGasto=Math.max.apply(null,topClientes.map(function(c){return c.gasto}).concat([1]));
-
-  // Produtos mais vendidos no mês
   var prodCount={};
   atdsMes.forEach(function(a){(a.produtos||[]).forEach(function(pid){var p=data.produtos.find(function(x){return x.id===pid});if(p)prodCount[p.nome]=(prodCount[p.nome]||0)+1})});
   var topProds=Object.entries(prodCount).sort(function(a,b){return b[1]-a[1]}).slice(0,5);
   var maxProd=Math.max.apply(null,topProds.map(function(p){return p[1]}).concat([1]));
-
-  // Serviços mais realizados no mês
   var servCount={};
   atdsMes.forEach(function(a){(a.servicos||[]).forEach(function(s){servCount[s]=(servCount[s]||0)+1})});
   var topServs=Object.entries(servCount).sort(function(a,b){return b[1]-a[1]}).slice(0,5);
   var maxServ=Math.max.apply(null,topServs.map(function(s){return s[1]}).concat([1]));
 
   return h(F,null,
+    h("div",{className:"insight-card",style:{marginBottom:16}},
+      h("div",{className:"insight-title"},"Clientes Inativos"),
+      h("div",{style:{display:"flex",alignItems:"center",gap:10,marginBottom:14}},
+        h("span",{style:{fontSize:12,color:"var(--text2)",fontWeight:300}},"Dias sem visita:"),
+        h("input",{type:"number",min:1,value:diasSemVisita,onChange:function(e){setDiasSemVisita(Number(e.target.value)||1)},style:{width:72,padding:"6px 10px",background:"var(--surface2)",border:"1px solid var(--border)",borderRadius:8,color:"var(--text)",fontFamily:"'Outfit',sans-serif",fontSize:14,outline:"none",textAlign:"center"}})
+      ),
+      clientesInativos.length===0
+        ?h("div",{style:{fontSize:13,color:"var(--text3)",fontWeight:300,textAlign:"center",padding:"8px 0"}},"Nenhum cliente inativo")
+        :clientesInativos.map(function(x,i){
+          return h("div",{key:x.cliente.id,style:{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:i<clientesInativos.length-1?"1px solid var(--border)":"none"}},
+            h("div",null,
+              h("div",{style:{fontSize:14,color:"var(--text)",fontWeight:400}},x.cliente.nome),
+              x.cliente.telefone&&h("div",{style:{display:"flex",alignItems:"center",gap:5,marginTop:3}},I.phone," ",h("a",{href:"https://wa.me/55"+(x.cliente.telefone||"").replace(/\D/g,""),target:"_blank",style:{fontSize:12,color:"var(--text2)",textDecoration:"none"}},fmtPhone(x.cliente.telefone)))
+            ),
+            h("div",{style:{textAlign:"right",flexShrink:0,marginLeft:12}},
+              h("div",{style:{fontSize:13,color:"var(--red)",fontWeight:500}},x.dias===null?"Nunca":x.dias+"d"),
+              x.dias!==null&&h("div",{style:{fontSize:10,color:"var(--text3)",marginTop:2}},"sem visita")
+            )
+          );
+        })
+    ),
     h(MonthFilter,{month:month,setMonth:setMonth}),
     h("div",{className:"stat-grid"},
       h("div",{className:"stat-box"},h("div",{className:"stat-value price"},money(receitaMes)),h("div",{className:"stat-label"},"Receita do Mês")),
@@ -323,7 +405,7 @@ function InsightsTab({data,setDetail,setTab}){
     atdsMes.length===0?h("div",{className:"empty",style:{padding:24}},h("p",null,"Nenhum atendimento neste mês.")):h(F,null,
       days.length>0&&h("div",{className:"insight-card"},h("div",{className:"insight-title"},"Receita por Dia"),days.map(function(d){return h("div",{className:"bar-row",key:d[0]},h("span",{className:"bar-label"},"Dia "+d[0]),h("div",{className:"bar-track"},h("div",{className:"bar-fill",style:{width:(d[1]/maxDay*100)+"%"}})),h("span",{className:"bar-value price"},money(d[1])))})),
       topClientes.length>0&&h("div",{className:"insight-card"},h("div",{className:"insight-title"},"Top Clientes"),topClientes.map(function(c){return h("div",{className:"bar-row clickable",key:c.id,onClick:function(){setDetail({type:"cliente",id:c.id});setTab("clientes")}},h("span",{className:"bar-label"},c.nome),h("div",{className:"bar-track"},h("div",{className:"bar-fill",style:{width:(c.gasto/maxGasto*100)+"%"}})),h("span",{className:"bar-value price"},money(c.gasto)))})),
-      topServs.length>0&&h("div",{className:"insight-card"},h("div",{className:"insight-title"},"Serviços Mais Realizados"),topServs.map(function(s){return h("div",{className:"bar-row",key:s[0]},h("span",{className:"bar-label"},s[0]),h("div",{className:"bar-track"},h("div",{className:"bar-fill",style:{width:(s[1]/maxServ*100)+"%"}})),h("span",{className:"bar-value"},s[1]+"x"))})),
+      topServs.length>0&&h("div",{className:"insight-card"},h("div",{className:"insight-title"},"Serviços Mais Realizados"),topServs.map(function(s){return h("div",{className:"bar-row",key:s[0]},h("span",{className:"bar-label",title:s[0],style:{width:"auto",maxWidth:160}},s[0]),h("div",{className:"bar-track"},h("div",{className:"bar-fill",style:{width:(s[1]/maxServ*100)+"%"}})),h("span",{className:"bar-value"},s[1]+"x"))})),
       topProds.length>0&&h("div",{className:"insight-card"},h("div",{className:"insight-title"},"Produtos Mais Vendidos"),topProds.map(function(p){return h("div",{className:"bar-row",key:p[0]},h("span",{className:"bar-label"},p[0]),h("div",{className:"bar-track"},h("div",{className:"bar-fill",style:{width:(p[1]/maxProd*100)+"%"}})),h("span",{className:"bar-value"},p[1]+"x"))}))
     )
   );
@@ -345,7 +427,7 @@ function DetailView({data,detail,setDetail,setForm,deleteItem}){
 
   return h(F,null,
     h("div",{className:"detail-header"},h("button",{onClick:function(){setDetail(null)}},I.back),h("h2",null,cliente.nome)),
-    cliente.telefone&&h("div",{style:{fontSize:14,color:"var(--text2)",marginBottom:4,display:"flex",alignItems:"center",gap:6,fontWeight:300}},I.phone," ",fmtPhone(cliente.telefone)),
+    cliente.telefone&&h("div",{style:{fontSize:14,color:"var(--text2)",marginBottom:4,display:"flex",alignItems:"center",gap:6,fontWeight:300}},I.phone," ",h("a",{href:"https://wa.me/55"+(cliente.telefone||"").replace(/\D/g,""),target:"_blank",style:{color:"var(--text2)",textDecoration:"none"}},fmtPhone(cliente.telefone))),
     cliente.notas&&h("div",{style:{fontSize:13,color:"var(--text3)",marginBottom:16,fontWeight:300}},cliente.notas),
     h("div",{className:"stat-grid"},
       h("div",{className:"stat-box"},h("div",{className:"stat-value"},atds.length),h("div",{className:"stat-label"},"Visitas")),
@@ -364,7 +446,7 @@ function DetailView({data,detail,setDetail,setForm,deleteItem}){
       return h("div",{className:"card",key:a.id},
         h("div",{className:"card-row"},
           h("div",null,h("div",{className:"card-title"},dateStr(a.data),a.horario?h("span",{style:{color:"var(--text3)",fontWeight:300,fontSize:13}}," · "+a.horario):""),h("div",{className:"card-sub"},(a.servicos||[]).join(", "))),
-          h("div",{style:{display:"flex",alignItems:"center",gap:8}},h("span",{className:"card-badge badge-gold price"},money(a.valor)),h("button",{className:"btn-icon danger",onClick:function(){deleteItem("atendimentos",a.id)}},I.trash))
+          h("div",{style:{display:"flex",alignItems:"center",gap:8}},h("span",{className:"card-badge badge-gold price"},money(a.valor)),h("button",{className:"btn-icon",onClick:function(){setForm({type:"atendimentos",item:a,clienteId:a.clienteId})}},I.edit),h("button",{className:"btn-icon danger",onClick:function(){deleteItem("atendimentos",a.id)}},I.trash))
         ),
         (a.produtos||[]).length>0&&h("div",{style:{marginTop:8}},h("div",{style:{fontSize:10,color:"var(--text3)",marginBottom:3}},"Produtos comprados"),h("div",{className:"tag-row"},(a.produtos||[]).map(function(pid){var p=data.produtos.find(function(x){return x.id===pid});return p?h("span",{key:pid,className:"tag"},p.nome):null}))),
         a.obs&&h("div",{style:{fontSize:12,color:"var(--text3)",marginTop:8,fontWeight:300}},a.obs)
@@ -397,14 +479,30 @@ function FormPanel({form,data,setForm,addItem,updateItem}){
   var [obsAtd,setObsAtd]=useState(form.item&&form.item.obs||"");
   var [servicos,setServicos]=useState(form.item&&form.item.servicos||[]);
   var [prodsSel,setProdsSel]=useState(form.item&&form.item.produtos||[]);
-  var sOpts=["Corte","Barba","Corte + Barba","Sobrancelha","Pigmentação","Hidratação"];
-  function toggleS(sv){setServicos(function(p){return p.includes(sv)?p.filter(function(x){return x!==sv}):[].concat(p,[sv])})}
+  var [saving,setSaving]=useState(false);
+  var sOpts=[{nome:"Corte",preco:45},{nome:"Barba",preco:35},{nome:"Sobrancelha",preco:10},{nome:"Corte + Barba + Sobrancelha",preco:80}];
+  var COMBO="Corte + Barba + Sobrancelha";var COMBO_PARTS=["Corte","Barba","Sobrancelha"];
+  function toggleS(sv){
+    var isSelected=servicos.includes(sv);
+    var next;
+    if(isSelected){next=servicos.filter(function(x){return x!==sv});}
+    else if(sv===COMBO){next=servicos.filter(function(x){return!COMBO_PARTS.includes(x)}).concat([sv]);}
+    else if(COMBO_PARTS.includes(sv)){next=servicos.filter(function(x){return x!==COMBO}).concat([sv]);}
+    else{next=servicos.concat([sv]);}
+    var oldTotal=servicos.reduce(function(s,x){var o=sOpts.find(function(o){return o.nome===x});return s+(o?o.preco:0)},0);
+    var newTotal=next.reduce(function(s,x){var o=sOpts.find(function(o){return o.nome===x});return s+(o?o.preco:0)},0);
+    setValorAtd(function(v){return Math.max(0,v+(newTotal-oldTotal))});
+    setServicos(next);
+  }
   function toggleP(pid){setProdsSel(function(p){return p.includes(pid)?p.filter(function(x){return x!==pid}):[].concat(p,[pid])})}
-  function submit(){
-    if(type==="produtos"){if(!nome)return;var item={nome:nome,fornecedor:fornecedor,marca:marca,categoria:categoria,precoCusto:precoCusto,precoVenda:precoVenda,estoque:estoque!==""?Number(estoque):null,telFornecedor:telFornecedor};isEdit?updateItem("produtos",form.item.id,item):addItem("produtos",item)}
-    else if(type==="clientes"){if(!nome)return;var item={nome:nome,telefone:telefone,notas:notas};isEdit?updateItem("clientes",form.item.id,item):addItem("clientes",item)}
-    else if(type==="contas"){if(!descricao)return;var item={descricao:descricao,tipo:tipoConta,valor:valor,categoria:catConta,vencimento:vencimento};isEdit?updateItem("contas",form.item.id,item):addItem("contas",item)}
-    else if(type==="atendimentos"){var item={clienteId:form.clienteId,data:dataAtd,horario:horario,valor:valorAtd,servicos:servicos,produtos:prodsSel,obs:obsAtd};addItem("atendimentos",item)}
+  async function submit(){
+    if(saving)return;
+    setSaving(true);
+    if(type==="produtos"){if(!nome){setSaving(false);return;}var item={nome:nome,fornecedor:fornecedor,marca:marca,categoria:categoria,precoCusto:precoCusto,precoVenda:precoVenda,estoque:estoque,telFornecedor:telFornecedor};isEdit?await updateItem("produtos",form.item.id,item):await addItem("produtos",item)}
+    else if(type==="clientes"){if(!nome){setSaving(false);return;}var item={nome:nome,telefone:telefone,notas:notas};isEdit?await updateItem("clientes",form.item.id,item):await addItem("clientes",item)}
+    else if(type==="contas"){if(!descricao){setSaving(false);return;}var item={descricao:descricao,tipo:tipoConta,valor:valor,categoria:catConta,vencimento:vencimento};isEdit?await updateItem("contas",form.item.id,item):await addItem("contas",item)}
+    else if(type==="atendimentos"){var cId=form.clienteId||(form.item&&form.item.clienteId);var item={clienteId:cId,data:dataAtd,horario:horario,valor:valorAtd,servicos:servicos,produtos:prodsSel,obs:obsAtd};isEdit?await updateItem("atendimentos",form.item.id,item):await addItem("atendimentos",item)}
+    setSaving(false);
   }
   var titles={produtos:"Produto",clientes:"Cliente",contas:"Conta",atendimentos:"Atendimento"};
   function Sel(label,val,setVal,opts){return h("div",{className:"field"},h("label",null,label),h("select",{value:val,onChange:function(e){setVal(e.target.value)}},h("option",{value:""},"Selecione"),opts.map(function(o){return h("option",{key:o,value:o},o)})))}
@@ -448,32 +546,90 @@ function FormPanel({form,data,setForm,addItem,updateItem}){
           h("div",{className:"field"},h("label",null,"Horário"),h("input",{type:"time",value:horario,onChange:function(e){setHorario(e.target.value)}}))
         ),
         h(MoneyInput,{value:valorAtd,onChange:setValorAtd,label:"Valor"}),
-        h("div",{className:"field"},h("label",null,"Serviços"),h("div",{className:"chips"},sOpts.map(function(sv){return h("span",{key:sv,className:"chip"+(servicos.includes(sv)?" selected":""),onClick:function(){toggleS(sv)}},sv)}))),
+        h("div",{className:"field"},h("label",null,"Serviços"),h("div",{className:"chips"},sOpts.map(function(sv){return h("span",{key:sv.nome,className:"chip"+(servicos.includes(sv.nome)?" selected":""),onClick:function(){toggleS(sv.nome)}},sv.nome)}))),
         data.produtos.length>0&&h("div",{className:"field"},h("label",null,"Produtos Comprados"),h("div",{className:"chips"},data.produtos.map(function(p){return h("span",{key:p.id,className:"chip"+(prodsSel.includes(p.id)?" selected":""),onClick:function(){toggleP(p.id)}},p.nome)}))),
         h("div",{className:"field"},h("label",null,"Observações"),h("textarea",{value:obsAtd,onChange:function(e){setObsAtd(e.target.value)},placeholder:"Detalhes do atendimento"}))
       ),
-      h("button",{className:"btn-primary",onClick:submit},isEdit?"Salvar Alterações":"Cadastrar"),
+      h("button",{className:"btn-primary",onClick:submit,disabled:saving},saving?"Salvando...":(isEdit?"Salvar Alterações":"Cadastrar")),
       h("button",{className:"btn-secondary",onClick:function(){setForm(null)}},"Cancelar")
     )
   );
 }
 
 // ── APP ──
-function App(){
-  var [data,setData]=useState(loadData);
+function App({onLogout}){
+  var [data,setData]=useState({produtos:[],clientes:[],contas:[],atendimentos:[]});
+  var [loading,setLoading]=useState(true);
   var [tab,setTab]=useState("produtos");
   var [form,setForm]=useState(null);
   var [detail,setDetail]=useState(null);
   var [search,setSearch]=useState("");
-  function addItem(key,item){setData(function(prev){var n={produtos:[].concat(prev.produtos),clientes:[].concat(prev.clientes),contas:[].concat(prev.contas),atendimentos:[].concat(prev.atendimentos)};n[key].push(Object.assign({id:uid()},item));saveData(n);return n});setForm(null)}
-  function updateItem(key,id,updates){setData(function(prev){var n={produtos:[].concat(prev.produtos),clientes:[].concat(prev.clientes),contas:[].concat(prev.contas),atendimentos:[].concat(prev.atendimentos)};n[key]=n[key].map(function(i){return i.id===id?Object.assign({},i,updates):i});saveData(n);return n});setForm(null)}
-  function deleteItem(key,id){if(!confirm("Excluir este item?"))return;setData(function(prev){var n={produtos:[].concat(prev.produtos),clientes:[].concat(prev.clientes),contas:[].concat(prev.contas),atendimentos:[].concat(prev.atendimentos)};n[key]=n[key].filter(function(i){return i.id!==id});if(key==="clientes"){n.atendimentos=n.atendimentos.filter(function(a){return a.clienteId!==id});setDetail(null)}if(key==="produtos"){n.atendimentos=n.atendimentos.map(function(a){var p=(a.produtos||[]).filter(function(pid){return pid!==id});return Object.assign({},a,{produtos:p})})}saveData(n);return n})}
+
+  useEffect(function(){
+    async function load(){
+      var [pr,cl,co,at]=await Promise.all([
+        sb.from("produtos").select("*"),
+        sb.from("clientes").select("*"),
+        sb.from("contas").select("*"),
+        sb.from("atendimentos").select("*")
+      ]);
+      setData({
+        produtos:(pr.data||[]).map(rowToProd),
+        clientes:(cl.data||[]).map(rowToCliente),
+        contas:(co.data||[]).map(rowToConta),
+        atendimentos:(at.data||[]).map(rowToAtd)
+      });
+      setLoading(false);
+    }
+    load();
+  },[]);
+
+  async function addItem(key,item){
+    var row=TO_ROW[key](item);
+    var {data:res,error}=await sb.from(key).insert(row).select().single();
+    if(error){alert("Erro ao salvar: "+error.message);return;}
+    var converted=FROM_ROW[key](res);
+    setData(function(prev){var n=Object.assign({},prev);n[key]=[].concat(prev[key],[converted]);return n});
+    setForm(null);
+  }
+
+  async function updateItem(key,id,updates){
+    var row=TO_ROW[key](updates);
+    var {error}=await sb.from(key).update(row).eq("id",id);
+    if(error){alert("Erro ao atualizar: "+error.message);return;}
+    setData(function(prev){var n=Object.assign({},prev);n[key]=prev[key].map(function(i){return i.id===id?Object.assign({},i,updates):i});return n});
+    setForm(null);
+  }
+
+  async function deleteItem(key,id){
+    if(!confirm("Excluir este item?"))return;
+    var {error}=await sb.from(key).delete().eq("id",id);
+    if(error){alert("Erro ao excluir: "+error.message);return;}
+    if(key==="clientes")setDetail(null);
+    setData(function(prev){
+      var n={produtos:[].concat(prev.produtos),clientes:[].concat(prev.clientes),contas:[].concat(prev.contas),atendimentos:[].concat(prev.atendimentos)};
+      n[key]=n[key].filter(function(i){return i.id!==id});
+      if(key==="clientes"){n.atendimentos=n.atendimentos.filter(function(a){return a.clienteId!==id})}
+      if(key==="produtos"){n.atendimentos=n.atendimentos.map(function(a){var ps=(a.produtos||[]).filter(function(pid){return pid!==id});if(ps.length!==(a.produtos||[]).length)sb.from("atendimentos").update({produtos:ps}).eq("id",a.id);return Object.assign({},a,{produtos:ps})})}
+      return n;
+    });
+  }
+
+  if(loading)return h("div",{className:"loading-screen"},"Carregando...");
+
   var tabs=[{key:"produtos",label:"Produtos",icon:I.box},{key:"clientes",label:"Clientes",icon:I.users},{key:"contas",label:"Contas",icon:I.wallet},{key:"insights",label:"Insights",icon:I.chart}];
   return h("div",{className:"app"},
-    h("div",{className:"header"},h("div",{className:"header-top"},h("span",{style:{color:"var(--gold)"}},I.scissors),h("h1",null,"Barbearia Tradicional")),h("div",{className:"header-sub"},"Sistema de Gestão")),
+    h("div",{className:"header"},
+      h("div",{className:"header-top"},
+        h("span",{style:{color:"var(--gold)"}},I.scissors),
+        h("h1",null,"Barbearia Tradicional"),
+        h("button",{className:"btn-logout",onClick:onLogout},"Sair")
+      ),
+      h("div",{className:"header-sub"},"Sistema de Gestão")
+    ),
     h("nav",{className:"nav"},tabs.map(function(t){return h("button",{key:t.key,className:"nav-item"+(tab===t.key?" active":""),onClick:function(){setTab(t.key);setDetail(null);setSearch("")}},t.icon,t.label)})),
     h("div",{className:"content"},
-      detail?h(DetailView,{data:data,detail:detail,setDetail:setDetail,setForm:setForm,addItem:addItem,deleteItem:deleteItem}):
+      detail?h(DetailView,{data:data,detail:detail,setDetail:setDetail,setForm:setForm,deleteItem:deleteItem}):
       tab==="produtos"?h(ProdutosTab,{data:data,search:search,setSearch:setSearch,setForm:setForm,deleteItem:deleteItem}):
       tab==="clientes"?h(ClientesTab,{data:data,search:search,setSearch:setSearch,setForm:setForm,setDetail:setDetail,deleteItem:deleteItem}):
       tab==="contas"?h(ContasTab,{data:data,search:search,setSearch:setSearch,setForm:setForm,deleteItem:deleteItem}):
@@ -483,7 +639,21 @@ function App(){
     form&&h(FormPanel,{form:form,data:data,setForm:setForm,addItem:addItem,updateItem:updateItem})
   );
 }
-ReactDOM.createRoot(document.getElementById("root")).render(h(App));
+
+// ── ROOT (auth gate) ──
+function Root(){
+  var [session,setSession]=useState(undefined);
+  useEffect(function(){
+    sb.auth.getSession().then(function(r){setSession(r.data.session||null)});
+    var sub=sb.auth.onAuthStateChange(function(_,sess){setSession(sess||null)});
+    return function(){sub.data.subscription.unsubscribe()};
+  },[]);
+  if(session===undefined)return h("div",{className:"loading-screen"},"...");
+  if(!session)return h(LoginScreen,null);
+  return h(App,{onLogout:function(){sb.auth.signOut()}});
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(h(Root));
 </script>
 </body>
 </html>
