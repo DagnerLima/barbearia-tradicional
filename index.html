@@ -120,7 +120,7 @@ const F=React.Fragment;
 
 const SUPA_URL="https://zugznhhtdrttsrzzvgsy.supabase.co";
 const SUPA_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp1Z3puaGh0ZHJ0dHNyenp2Z3N5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwNTU2NjIsImV4cCI6MjA5NjYzMTY2Mn0.roDxF-vh9Ue8xI-GNxjdclIRVoFAOyx7fP73WIjos9Q";
-const sb=supabase.createClient(SUPA_URL,SUPA_KEY);
+const sb=window.supabase.createClient(SUPA_URL,SUPA_KEY);
 
 // ── Row converters ──
 function rowToProd(r){return{id:r.id,nome:r.nome||"",fornecedor:r.fornecedor||"",marca:r.marca||"",categoria:r.categoria||"",precoCusto:r.preco_custo||0,precoVenda:r.preco_venda||0,estoque:r.estoque!=null?r.estoque:null,telFornecedor:r.tel_fornecedor||""}}
